@@ -1,0 +1,18 @@
+file.c → file.i → file.s → file.o → file
+
+
+1. to give file to PREPROCESSOR
+
+gcc -E file.c > file.i
+
+2. to give file to COMPILER 
+
+gcc -S file.i > file.s
+
+3. to give file to ASSEMBLER 
+
+gcc -c file.s > file.o 
+
+4. to give file to LINKER 
+
+gcc file.o > file.exe

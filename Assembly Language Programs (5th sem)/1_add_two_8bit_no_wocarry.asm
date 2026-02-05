@@ -1,5 +1,11 @@
-ORG 0000H
-MOV A, #25H
-MOV B, #34H
-MOV R0, A
-END
+.model small
+.stack 100h
+.code
+main proc
+    mov al, 25h
+    mov bl, 34h
+    add al, bl
+    mov ah, 4Ch
+    int 21h
+main endp
+end main
