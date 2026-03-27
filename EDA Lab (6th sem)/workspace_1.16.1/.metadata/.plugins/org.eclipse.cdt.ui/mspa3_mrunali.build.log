@@ -1,0 +1,10 @@
+20:54:27 **** Incremental Build of configuration Debug for project mspa3_mrunali ****
+make -j8 all 
+arm-none-eabi-size  mspa3_mrunali.elf 
+   text	   data	    bss	    dec	    hex	filename
+  22292	     96	   3248	  25636	   6424	mspa3_mrunali.elf
+Finished building: default.size.stdout
+ 
+
+20:54:29 Build Finished. 0 errors, 0 warnings. (took 1s.729ms)
+

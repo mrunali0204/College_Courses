@@ -1,0 +1,95 @@
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include <stdio.h>
+#include "ssd1306.h"
+#include "ssd1306_fonts.h"
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+I2C_HandleTypeDef hi2c1;
+TIM_HandleTypeDef htim1; // For Encoder
+TIM_HandleTypeDef htim2; // For RGB PWM
+
+/* USER CODE BEGIN PV */
+uint32_t soundValue = 0;
+int32_t encoderValue = 0;
+int32_t threshold = 500; // Default sound threshold
+char oledBuffer[32];
+/* USER CODE END PV */
+
+int main(void)
+{
+  HAL_Init();
+  SystemClock_Config();
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_I2C1_Init();
+  MX_ADC1_Init();
+  MX_TIM1_Init(); // Encoder
+  MX_TIM2_Init(); // RGB PWM
+
+  /* USER CODE BEGIN 2 */
+  ssd1306_Init();
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL); // Start Encoder
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);       // Red LED
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);       // Green LED
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);       // Blue LED
+
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(10, 0);
+  ssd1306_WriteString("SONIC SPECTRUM", Font_7x10, White);
+  ssd1306_UpdateScreen();
+  HAL_Delay(1000);
+  /* USER CODE END 2 */
+
+  while (1)
+  {
+    /* 1. Read Sound Sensor (ADC) */
+    HAL_ADC_Start(&hadc1);
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+        soundValue = HAL_ADC_GetValue(&hadc1);
+    }
+    HAL_ADC_Stop(&hadc1);
+
+    /* 2. Read Rotary Encoder (Adjust Threshold) */
+    encoderValue = __HAL_TIM_GET_COUNTER(&htim1);
+    threshold = 500 + (encoderValue * 10); // Map encoder to threshold range
+    if(threshold < 0) threshold = 0;
+
+    /* 3. Logic for RGB Actuator (Traffic Signal style) */
+    if (soundValue < threshold) {
+        // Safe - GREEN
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);   // Red Off
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 255); // Green On
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);   // Blue Off
+    }
+    else if (soundValue >= threshold && soundValue < (threshold + 500)) {
+        // Warning - YELLOW (Red + Green)
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 255);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 200);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+    }
+    else {
+        // DANGER - RED
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 255);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+    }
+
+    /* 4. Update OLED Display */
+    ssd1306_Fill(Black);
+
+    sprintf(oledBuffer, "Noise: %lu", soundValue);
+    ssd1306_SetCursor(0, 15);
+    ssd1306_WriteString(oledBuffer, Font_11x18, White);
+
+    sprintf(oledBuffer, "Limit: %ld", threshold);
+    ssd1306_SetCursor(0, 40);
+    ssd1306_WriteString(oledBuffer, Font_7x10, White);
+
+    ssd1306_UpdateScreen();
+
+    HAL_Delay(50); // Small delay for stability
+  }
+}
